@@ -1,0 +1,106 @@
+
+import tkinter as tk
+import random
+import unicodedata
+
+# Define phrases with missing words indicated by '__' and the actual missing word provided
+phrases = [
+    ("Good morning", "Buenos __", "días"),
+    ("I'm happy", "Estoy __", "feliz"),
+    ("I am learning Spanish", "Estoy aprendiendo __", "español"),
+    ("I have a question", "Tengo una __", "pregunta")
+]
+
+def remove_accents(input_str):
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+def submit_answer(missing_word, answer_entry, feedback_label, score_label, hint_label, attempts, next_challenge, completed_phrases, submit_button):
+    answer = answer_entry.get().strip().lower()
+    correct_answer = missing_word.lower()
+    if remove_accents(answer) == remove_accents(correct_answer):
+        feedback_label.config(text="Correct! Good job!")
+        score_label.config(text=f"Score: {int(score_label['text'].split(': ')[1]) + 1}")
+        hint_label.config(text="")
+        attempts[0] = 0
+        completed_phrases.add(missing_word)
+        next_challenge()
+    else:
+        feedback_label.config(text="That's not correct. Please try again.")
+        attempts[0] += 1
+        give_hint(missing_word, hint_label, attempts[0])
+
+def give_hint(missing_word, hint_label, attempt):
+    if attempt == 1:
+        hint_label.config(text=f"Hint: The word starts with '{missing_word[0]}'")
+    elif attempt == 2:
+        partial_hint = missing_word[:len(missing_word)//2]
+        hint_label.config(text=f"Hint: The word starts with '{partial_hint}...'")
+    elif attempt >= 3:
+        hint_label.config(text=f"The correct word is: '{missing_word}'. Please write it to proceed.")
+
+def next_challenge(phrases, english_label, question_label, answer_entry, missing_word, attempts, completed_phrases, feedback_label, submit_button):
+    if len(completed_phrases) >= len(phrases):
+        feedback_label.config(text="Game Over. Thank you for playing!")
+        submit_button.config(state='disabled')
+        answer_entry.config(state='disabled')
+        return
+
+    remaining_phrases = [phrase for phrase in phrases if phrase[2] not in completed_phrases]
+    if remaining_phrases:
+        current_phrase = random.choice(remaining_phrases)
+        missing_word[0] = current_phrase[2]
+        english_label.config(text=f"Translate the following phrase to Spanish:\n\n{current_phrase[0]}")
+        question_label.config(text=f"Complete the sentence:\n\n{current_phrase[1].replace('__', '______')}")
+        answer_entry.delete(0, tk.END)
+        attempts[0] = 0
+    else:
+        feedback_label.config(text="Game Over. Thank you for playing!")
+        submit_button.config(state='disabled')
+        answer_entry.config(state='disabled')
+
+def create_interface(window, phrases):
+    welcome_label = tk.Label(window, text="Welcome to the Spanish Language Game!")
+    welcome_label.pack(pady=10)
+
+    english_label = tk.Label(window, text="")
+    english_label.pack(pady=10)
+
+    question_label = tk.Label(window, text="")
+    question_label.pack(pady=10)
+
+    answer_entry = tk.Entry(window)
+    answer_entry.pack(pady=10)
+
+    hint_label = tk.Label(window, text="")
+    hint_label.pack(pady=5)
+
+    feedback_label = tk.Label(window, text="")
+    feedback_label.pack(pady=5)
+
+    score_label = tk.Label(window, text="Score: 0")
+    score_label.pack(pady=20)
+
+    missing_word = ['']
+    attempts = [0]
+    completed_phrases = set()
+
+    submit_button = tk.Button(window, text="Submit", command=lambda: submit_answer(missing_word[0], answer_entry, feedback_label, score_label, hint_label, attempts, lambda: next_challenge(phrases, english_label, question_label, answer_entry, missing_word, attempts, completed_phrases, feedback_label, submit_button), completed_phrases, submit_button))
+    submit_button.pack()
+    skip_button = tk.Button(window, text="Skip", command=lambda: next_challenge(phrases, english_label, question_label, answer_entry, missing_word, attempts, completed_phrases, feedback_label, submit_button))
+    skip_button.pack(pady=5)
+
+    # Pass the submit_button to the next_challenge function
+    next_challenge(phrases, english_label, question_label, answer_entry, missing_word, attempts, completed_phrases, feedback_label, submit_button)
+
+    # Bind the Enter key to the submit_answer function
+    window.bind('<Return>', lambda event: submit_answer(missing_word[0], answer_entry, feedback_label, score_label, hint_label, attempts, lambda: next_challenge(phrases, english_label, question_label, answer_entry, missing_word, attempts, completed_phrases, feedback_label, submit_button), completed_phrases, submit_button))
+
+def main():
+    window = tk.Tk()
+    window.title("Spanish Practice")
+    create_interface(window, phrases)
+    window.mainloop()
+
+if __name__ == "__main__":
+    main()
